@@ -80,6 +80,7 @@ pub struct SessionContext {
     receiver_key: HpkeKeyPair,
     reply_key: Option<HpkePublicKey>,
     max_fee_rate: FeeRate,
+    pub utreexo_enabled: bool,
 }
 
 impl SessionContext {
@@ -316,9 +317,14 @@ impl ReceiverBuilder {
             amount: None,
             reply_key: None,
             max_fee_rate: FeeRate::BROADCAST_MIN,
+            utreexo_enabled: false,
         };
         Ok(Self(session_context))
     }
+
+    pub fn with_utreexo(self, enabled: bool) -> Self {
+        Self(SessionContext { utreexo_enabled: enabled, ..self.0 })
+           }
 
     pub fn with_expiration(self, expiration: Duration) -> Self {
         Self(SessionContext {
@@ -505,7 +511,11 @@ impl Receiver<Initialized> {
 
     /// Build a V2 Payjoin URI from the receiver's context
     pub fn pj_uri<'a>(&self) -> crate::PjUri<'a> {
-        pj_uri(&self.session_context, OutputSubstitution::Disabled)
+        pj_uri(
+            &self.session_context,
+            OutputSubstitution::Disabled,
+            self.session_context.utreexo_enabled
+        )
     }
 
     pub(crate) fn apply_retrieved_original_payload(
@@ -1341,6 +1351,7 @@ fn mailbox_endpoint(directory: &Url, id: &ShortId) -> Url {
 pub(crate) fn pj_uri<'a>(
     session_context: &SessionContext,
     output_substitution: OutputSubstitution,
+    utreexo_enabled: bool,
 ) -> crate::PjUri<'a> {
     use crate::uri::PayjoinExtras;
     let pj_param = crate::uri::PjParam::V2(crate::uri::v2::PjParam::new(
@@ -1350,7 +1361,7 @@ pub(crate) fn pj_uri<'a>(
         session_context.ohttp_keys.clone(),
         session_context.receiver_key.public_key().clone(),
     ));
-    let extras = PayjoinExtras { pj_param, output_substitution };
+    let extras = crate::uri::PayjoinExtras { pj_param, output_substitution, utreexo_enabled };
     let mut uri = bitcoin_uri::Uri::with_extras(session_context.address.clone(), extras);
     uri.amount = session_context.amount;
 
@@ -1391,6 +1402,7 @@ pub mod test {
         reply_key: None,
         amount: None,
         max_fee_rate: FeeRate::BROADCAST_MIN,
+        utreexo_enabled: false,
     });
 
     pub(crate) fn unchecked_proposal_v2_from_test_vector() -> UncheckedOriginalPayload {

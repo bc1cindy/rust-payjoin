@@ -109,8 +109,11 @@ impl SessionHistory {
         self.events
             .iter()
             .find_map(|event| match event {
-                SessionEvent::Created(session_context) =>
-                    Some(crate::receive::v2::pj_uri(session_context, OutputSubstitution::Disabled)),
+                SessionEvent::Created(session_context) => Some(crate::receive::v2::pj_uri(
+                    session_context,
+                    OutputSubstitution::Disabled,
+                    session_context.utreexo_enabled,
+                )),
                 _ => None,
             })
             .expect("Session event log must contain at least one event with pj_uri")
