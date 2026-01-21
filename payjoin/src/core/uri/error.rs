@@ -4,6 +4,7 @@ pub struct PjParseError(pub(super) InternalPjParseError);
 #[derive(Debug)]
 pub(super) enum InternalPjParseError {
     BadPjOs,
+    BadUtreexo,
     DuplicateParams(&'static str),
     MissingEndpoint,
     NotUtf8,
@@ -23,6 +24,7 @@ impl std::error::Error for PjParseError {
         use InternalPjParseError::*;
         match &self.0 {
             BadPjOs => None,
+            BadUtreexo => None,
             DuplicateParams(_) => None,
             MissingEndpoint => None,
             NotUtf8 => None,
@@ -40,6 +42,7 @@ impl std::fmt::Display for PjParseError {
         use InternalPjParseError::*;
         match &self.0 {
             BadPjOs => write!(f, "Bad pjos parameter"),
+            BadUtreexo => write!(f, "Bad utreexo parameter"),
             DuplicateParams(param) => {
                 write!(f, "Multiple instances of parameter '{param}'")
             }

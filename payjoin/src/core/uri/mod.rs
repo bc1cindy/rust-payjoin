@@ -98,12 +98,15 @@ pub struct PayjoinExtras {
     pub(crate) pj_param: PjParam,
     /// pjos parameter
     pub(crate) output_substitution: OutputSubstitution,
+    /// utreexo parameter
+    pub(crate) utreexo_enabled: bool,
 }
 
 impl PayjoinExtras {
     pub fn pj_param(&self) -> &PjParam { &self.pj_param }
     pub fn endpoint(&self) -> String { self.pj_param.endpoint() }
     pub fn output_substitution(&self) -> OutputSubstitution { self.output_substitution }
+    pub fn utreexo_enabled(&self) -> bool { self.utreexo_enabled }
 }
 
 pub type Uri<'a, NetworkValidation> = bitcoin_uri::Uri<'a, NetworkValidation, MaybePayjoinExtras>;
@@ -159,6 +162,7 @@ impl bitcoin_uri::de::DeserializeParams<'_> for MaybePayjoinExtras {
 pub struct DeserializationState {
     pj: Option<PjParam>,
     pjos: Option<OutputSubstitution>,
+    utreexo: Option<bool>,
 }
 
 impl bitcoin_uri::SerializeParams for &MaybePayjoinExtras {
@@ -180,7 +184,10 @@ impl bitcoin_uri::SerializeParams for &PayjoinExtras {
     type Iterator = std::vec::IntoIter<(Self::Key, Self::Value)>;
 
     fn serialize_params(self) -> Self::Iterator {
-        let mut params = Vec::with_capacity(2);
+        let mut params = Vec::with_capacity(3);
+        if self.utreexo_enabled {
+            params.push(("utreexo", "1".to_string()));
+        }
         if self.output_substitution == OutputSubstitution::Disabled {
             params.push(("pjos", String::from("0")));
         }
@@ -192,7 +199,7 @@ impl bitcoin_uri::SerializeParams for &PayjoinExtras {
 impl bitcoin_uri::de::DeserializationState<'_> for DeserializationState {
     type Value = MaybePayjoinExtras;
 
-    fn is_param_known(&self, param: &str) -> bool { matches!(param, "pj" | "pjos") }
+    fn is_param_known(&self, param: &str) -> bool { matches!(param, "pj" | "pjos" | "utreexo") }
 
     fn deserialize_temp(
         &mut self,
@@ -220,6 +227,17 @@ impl bitcoin_uri::de::DeserializationState<'_> for DeserializationState {
                 Ok(bitcoin_uri::de::ParamKind::Known)
             }
             "pjos" => Err(InternalPjParseError::DuplicateParams("pjos").into()),
+
+            "utreexo" if self.utreexo.is_none() => {
+                match &*Cow::try_from(value).map_err(|_| InternalPjParseError::BadUtreexo)? {
+                    "1" => self.utreexo = Some(true),
+                    "0" => self.utreexo = Some(false),
+                    _ => return Err(InternalPjParseError::BadUtreexo.into()),
+                }
+                Ok(bitcoin_uri::de::ParamKind::Known)
+            }
+            "utreexo" => Err(InternalPjParseError::DuplicateParams("utreexo").into()),
+
             _ => Ok(bitcoin_uri::de::ParamKind::Unknown),
         }
     }
@@ -234,6 +252,7 @@ impl bitcoin_uri::de::DeserializationState<'_> for DeserializationState {
             (Some(pj_param), pjos) => Ok(MaybePayjoinExtras::Supported(PayjoinExtras {
                 pj_param,
                 output_substitution: pjos.unwrap_or(OutputSubstitution::Enabled),
+                utreexo_enabled: self.utreexo.unwrap_or(false),
             })),
         }
     }
