@@ -13,6 +13,8 @@ use bitcoin::{bip32, psbt, Address, AddressType, Network, TxIn, TxOut, Weight};
 /// <https://docs.rs/bitcoin/latest/src/bitcoin/blockdata/transaction.rs.html#1621>
 pub(crate) const NON_WITNESS_INPUT_WEIGHT: Weight = Weight::from_non_witness_data_size(32 + 4 + 4);
 
+pub mod psbt_ext;
+
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum InconsistentPsbt {
     UnequalInputCounts { tx_ins: usize, psbt_ins: usize },
