@@ -51,9 +51,10 @@ pub fn build_v1_pj_uri<'a>(
     address: &bitcoin::Address,
     endpoint: impl IntoUrl,
     output_substitution: OutputSubstitution,
+    utreexo_enabled: bool,
 ) -> Result<crate::uri::PjUri<'a>, PjParseError> {
     let pj_param = PjParam::parse(endpoint)?;
-    let extras = crate::uri::PayjoinExtras { pj_param, output_substitution };
+    let extras = crate::uri::PayjoinExtras { pj_param, output_substitution, utreexo_enabled };
     Ok(bitcoin_uri::Uri::with_extras(address.clone(), extras))
 }
 
