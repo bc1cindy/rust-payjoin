@@ -508,6 +508,7 @@ mod tests {
         TxOut, Weight,
     };
     use payjoin_test_utils::{DUMMY20, RECEIVER_INPUT_CONTRIBUTION};
+    use proptest::prelude::*;
 
     use super::*;
     use crate::receive::tests::original_from_test_vector;
@@ -627,6 +628,22 @@ mod tests {
         let selected = wants_inputs.try_preserving_privacy([candidate.clone()]).unwrap();
 
         assert_eq!(selected, candidate);
+    }
+
+    proptest! {
+        /// `Empty` is reserved for an empty candidate set, so a non-empty set must never yield it.
+        #[test]
+        fn try_preserving_privacy_non_empty_never_empty(
+            sats in prop::collection::vec(1u64..=100_000, 1..=4),
+        ) {
+            let wants_inputs =
+                WantsOutputs::new(original_from_test_vector(), vec![0]).commit_outputs();
+            let candidates: Vec<InputPair> = sats
+                .into_iter()
+                .map(|s| candidate_input_from_test_vector(Amount::from_sat(s)))
+                .collect();
+            prop_assert!(wants_inputs.try_preserving_privacy(candidates).is_ok());
+        }
     }
 
     #[test]
